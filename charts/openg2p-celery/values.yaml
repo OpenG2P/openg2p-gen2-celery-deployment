@@ -1,0 +1,168 @@
+global:
+  # Database
+  postgresqlHost: commons-postgresql
+  celeryJobsDB: '{{ .Release.Name }}_db'
+  celeryJobsDBPort: 5432
+  celeryJobsDBUser: '{{ .Release.Name }}_db_user'
+  celeryJobsDBSecret: '{{ .Release.Name }}'
+  celeryJobsDBUserPasswordKey: '{{ .Release.Name }}_db_user'
+
+  # Redis
+  redisInstallationName: '{{ .Release.Name }}-redis-master'
+
+  # Partner API
+  partnerApiInstallationName: registry-gen2-partner-api
+
+  # Security & Authentication
+  keymanagerInstallationName: commons-keymanager
+  keycloakBaseUrl: https://keycloak.openg2p.org
+  keycloakIssuerUrl: '{{ .Values.global.keycloakBaseUrl }}/realms/master'
+
+postgres-init:
+  enabled: true
+  postgresql:
+    host: '{{ .Values.global.postgresqlHost }}'
+    port: 5432
+    # Hard coding. Same as one defined under Odoo
+    existingSecret: openg2p-commons-postgresql
+    existingSecretPostgresPasswordKey: postgres-password
+  databases:
+    - name: '{{ tpl .Values.global.celeryJobsDB $ }}'
+      user: '{{ tpl .Values.global.celeryJobsDBUser $ }}'
+      secret: '{{ tpl .Values.global.celeryJobsDBSecret $ }}'
+      secretUserPasswordKey: '{{ tpl .Values.global.celeryJobsDBUserPasswordKey $ }}'
+
+celeryBeatProducer:
+  enabled: false
+  nameOverride: celery-beat-producer
+  replicaCount: 1
+  image:
+    repository: openg2p/openg2p-celery-beat-producers
+    tag: "develop"
+    pullPolicy: Always
+
+  envVars:
+
+    CELERY_JOBS_BEAT_DB_HOSTNAME: '{{ .Values.global.postgresqlHost }}'
+    CELERY_JOBS_BEAT_DB_DBNAME: '{{ tpl .Values.global.celeryJobsDB $ }}'
+    CELERY_JOBS_BEAT_DB_PORT: '{{ .Values.global.celeryJobsDBPort }}'
+    CELERY_JOBS_BEAT_DB_USERNAME: '{{ tpl .Values.global.celeryJobsDBUser $ }}'
+
+    CELERY_JOBS_BEAT_CELERY_BROKER_URL: redis://{{ tpl .Values.global.redisInstallationName $ }}:6379/0
+    CELERY_JOBS_BEAT_CELERY_BACKEND_URL: redis://{{ tpl .Values.global.redisInstallationName $ }}:6379/0
+
+    CELERY_JOBS_BEAT_WORKER_QUEUE: celery_jobs_worker_queue
+    CELERY_JOBS_BEAT_BATCH_SIZE: 2000
+    CELERY_JOBS_BEAT_NO_OF_TASKS_TO_PROCESS: 4
+
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_SECONDS: 30
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_MINUTES: 0
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_HOURS: 0
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_DAYS: 0
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_WEEKS: 0
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_DATA_Q_FREQUENCY: 20
+
+  envVarsFrom:
+    CELERY_JOBS_BEAT_DB_PASSWORD:
+      secretKeyRef:
+        name: '{{ tpl .Values.global.celeryJobsDBSecret $ }}'
+        key: '{{ tpl .Values.global.celeryJobsDBUserPasswordKey $ }}'
+
+  postgresCheckerInit:
+    enabled: true
+    image:
+      repository: jbergknoff/postgresql-client
+      tag: latest
+      pullPolicy: IfNotPresent
+    command:
+    - 'sh'
+    args:
+    - '-c'
+    - >-
+      until pg_isready
+      -U ${CELERY_JOBS_BEAT_DB_USERNAME}
+      -h ${CELERY_JOBS_BEAT_DB_HOSTNAME}
+      -p ${CELERY_JOBS_BEAT_DB_PORT:-5432}
+      -d ${CELERY_JOBS_BEAT_DB_DBNAME:-celeryJobsDB};
+      do sleep 3;
+      done
+    containerSecurityContext:
+      enabled: false
+
+  serviceAccount:
+    create: false
+    name: ""
+
+celeryWorker:
+  enabled: false
+  nameOverride: celery-worker
+  replicaCount: 1
+  image:
+    repository: openg2p/openg2p-celery-workers
+    tag: "develop"
+    pullPolicy: Always
+
+  envVars:
+    CELERY_JOBS_WORKER_DB_HOSTNAME: '{{ .Values.global.postgresqlHost }}'
+    CELERY_JOBS_WORKER_DB_DBNAME: '{{ tpl .Values.global.celeryJobsDB $ }}'
+    CELERY_JOBS_WORKER_DB_PORT: '{{ .Values.global.celeryJobsDBPort }}'
+    CELERY_JOBS_WORKER_DB_USERNAME: '{{ tpl .Values.global.celeryJobsDBUser $ }}'
+
+    CELERY_JOBS_WORKER_CELERY_BROKER_URL: "redis://{{ tpl .Values.global.redisInstallationName $ }}:6379/0"
+    CELERY_JOBS_WORKER_CELERY_BACKEND_URL: "redis://{{ tpl .Values.global.redisInstallationName $ }}:6379/0"
+    CELERY_JOBS_WORKER_WORKER_QUEUE: "celery_jobs_worker_queue"
+
+    CELERY_JOBS_WORKER_REGISTRY_INGEST_URL: "http://{{ .Values.global.partnerApiInstallationName }}/partner/ingest_data"
+
+    CELERY_JOBS_WORKER_BATCH_SIZE: 2000
+    CELERY_JOBS_WORKER_WORKER_MAX_ATTEMPTS: 5
+
+    CELERY_JOBS_WORKER_ENTRY_POINT_START_DATETIME: "2025-12-01T00:00:00"
+
+  envVarsFrom:
+    CELERY_JOBS_WORKER_DB_PASSWORD:
+      secretKeyRef:
+        name: '{{ tpl .Values.global.celeryJobsDBSecret $ }}'
+        key: '{{ tpl .Values.global.celeryJobsDBUserPasswordKey $ }}'
+
+  postgresCheckerInit:
+    enabled: true
+    image:
+      repository: jbergknoff/postgresql-client
+      tag: latest
+      pullPolicy: IfNotPresent
+    command:
+    - 'sh'
+    args:
+    - '-c'
+    - >-
+      until pg_isready
+      -U ${CELERY_JOBS_WORKER_DB_USERNAME}
+      -h ${CELERY_JOBS_WORKER_DB_HOSTNAME}
+      -p ${CELERY_JOBS_WORKER_DB_PORT:-5432}
+      -d ${CELERY_JOBS_WORKER_DB_DBNAME:-celeryJobsDB};
+      do sleep 3;
+      done
+    containerSecurityContext:
+      enabled: false
+
+  postgresqlInstallationName: '{{ .Release.Name }}-postgresql'
+  podSecurityContext:
+    enabled: false
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 1001
+    runAsNonRoot: true
+  serviceAccount:
+    create: false
+    name: ""
+
+redis:
+  enabled: false
+  architecture: standalone
+  master:
+    persistence:
+      enabled: false
+  auth:
+    enabled: false

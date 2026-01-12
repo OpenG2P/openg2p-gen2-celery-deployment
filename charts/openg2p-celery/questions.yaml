@@ -1,0 +1,99 @@
+questions:
+- variable: global.celeryJobsHostname
+  description: Hostname under which all Celery Jobs services will be accessed
+  type: string
+  label: Celery Jobs Hostname
+  group: General
+
+- variable: celeryBeatProducer.enabled
+  description: Install Celery Beat Producers
+  type: boolean
+  label: Celery Beat Producers
+  group: General
+
+- variable: celeryWorker.enabled
+  description: Install Celery Workers
+  type: boolean
+  label: Celery Workers
+  group: General
+
+# Keycloak
+- variable: global.keycloakBaseUrl
+  description: Keycloak Base Url used in all components
+  type: string
+  label: Keycloak Base URL
+  group: Keycloak
+
+- variable: global.keycloakIssuerUrl
+  description: Keycloak Issuer URL
+  type: string
+  label: Keycloak Issuer URL
+  group: Keycloak
+
+- variable: global.celeryJobsAuthClientId
+  description: OIDC Client ID for Celery Jobs
+  type: string
+  label: OIDC Client ID
+  group: Keycloak
+
+- variable: global.celeryJobsAuthClientSecret
+  description: OIDC Client Secret for Celery Jobs
+  type: string
+  label: OIDC Client Secret
+  group: Keycloak
+
+# Celery Jobs DB
+- variable: global.postgresqlHost
+  description: Celery Jobs database hostname
+  type: string
+  label: Celery Jobs Database Hostname
+  group: Celery Jobs Database
+
+- variable: global.celeryJobsDB
+  description: Celery Jobs Database
+  type: string
+  label: Celery Jobs Database
+  group: Celery Jobs Database
+
+- variable: global.celeryJobsDBUser
+  description: Celery Jobs database user
+  type: string
+  label: Celery Jobs Database User
+  group: Celery Jobs Database
+
+- variable: global.celeryJobsDBSecret
+  description: Celery Jobs database user Kubernetes secret
+  type: string
+  label: Celery Jobs Database User Secret
+  group: Celery Jobs Database
+
+- variable: global.celeryJobsDBUserPasswordKey
+  description: Celery Jobs database user password key
+  type: string
+  label: Celery Jobs Database User Password Key
+  group: Celery Jobs Database
+
+# Keymanager
+- variable: global.keymanagerInstallationName
+  description: Keymanager Installation Name
+  type: string
+  label: Keymanager Installation Name
+  group: Keymanager
+
+- variable: global.keycloakBaseUrl
+  description: Keycloak Base URL
+  type: string
+  label: Keycloak Base URL
+  group: Keymanager
+
+- variable: global.celeryJobsKeymanagerAuthEnabled
+  label: API Authentication Enabled
+  description: Enables Keymanager API authentication.
+  type: boolean
+  group: Keymanager
+
+- variable: global.celeryJobsKeymanagerAppId
+  description: Keymanager Application ID for Celery Jobs
+  type: string
+  label: Keymanager App ID
+  group: Keymanager
