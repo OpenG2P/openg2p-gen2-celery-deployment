@@ -11,7 +11,7 @@ global:
   redisInstallationName: '{{ .Release.Name }}-redis-master'
 
   # Partner API
-  partnerApiInstallationName: registry-gen2-partner-api
+  partnerApiInstallationName: registry-gen2-family-partner-api
 
   # Security & Authentication
   keymanagerInstallationName: commons-keymanager
@@ -24,7 +24,7 @@ postgres-init:
     host: '{{ .Values.global.postgresqlHost }}'
     port: 5432
     # Hard coding. Same as one defined under Odoo
-    existingSecret: openg2p-commons-postgresql
+    existingSecret: commons-postgresql
     existingSecretPostgresPasswordKey: postgres-password
   databases:
     - name: '{{ tpl .Values.global.celeryJobsDB $ }}'
@@ -33,11 +33,11 @@ postgres-init:
       secretUserPasswordKey: '{{ tpl .Values.global.celeryJobsDBUserPasswordKey $ }}'
 
 celeryBeatProducer:
-  enabled: false
+  enabled: true
   nameOverride: celery-beat-producer
   replicaCount: 1
   image:
-    repository: openg2p/openg2p-celery-beat-producers
+    repository: openg2p/openg2p-celery-jobs-beat-producers
     tag: "develop"
     pullPolicy: Always
 
@@ -60,7 +60,7 @@ celeryBeatProducer:
     CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_HOURS: 0
     CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_DAYS: 0
     CELERY_JOBS_BEAT_G2P_CELERY_JOB_POLL_FREQUENCY_WEEKS: 0
-    CELERY_JOBS_BEAT_G2P_CELERY_JOB_DATA_Q_FREQUENCY: 20
+    CELERY_JOBS_BEAT_G2P_CELERY_JOB_DATA_Q_FREQUENCY: 10
 
   envVarsFrom:
     CELERY_JOBS_BEAT_DB_PASSWORD:
@@ -94,11 +94,11 @@ celeryBeatProducer:
     name: ""
 
 celeryWorker:
-  enabled: false
+  enabled: true
   nameOverride: celery-worker
   replicaCount: 1
   image:
-    repository: openg2p/openg2p-celery-workers
+    repository: openg2p/openg2p-celery-jobs-workers
     tag: "develop"
     pullPolicy: Always
 
@@ -117,7 +117,12 @@ celeryWorker:
     CELERY_JOBS_WORKER_BATCH_SIZE: 2000
     CELERY_JOBS_WORKER_WORKER_MAX_ATTEMPTS: 5
 
-    CELERY_JOBS_WORKER_ENTRY_POINT_START_DATETIME: "2025-12-01T00:00:00"
+    CELERY_JOBS_WORKER_ENTRY_POINT_START_DATETIME: "2026-01-01T00:00:00Z"
+
+    # CRVS Config
+    CELERY_JOBS_WORKER_OPENG2P_CRVS_CLIENT_ID: ""
+    CELERY_JOBS_WORKER_OPENG2P_CRVS_CLIENT_SECRET: ""
+    CELERY_JOBS_WORKER_OPENG2P_CRVS_SHA_SECRET: ""
 
   envVarsFrom:
     CELERY_JOBS_WORKER_DB_PASSWORD:
@@ -159,7 +164,7 @@ celeryWorker:
     name: ""
 
 redis:
-  enabled: false
+  enabled: true
   architecture: standalone
   master:
     persistence:
